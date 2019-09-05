@@ -51,6 +51,27 @@ fn print_json_array(arr: &Vec<JsonValue>, prof: u32) {
     print!("]");
 }
 
+fn print_json_object(props: &HashMap<String, JsonValue>, prof: u32) {
+    if props.len() == 0 {
+        print_node_prof(prof);
+        print!("{{}}");
+        return;
+    }
+
+    print_node_prof(prof);
+    println!("{{");
+
+    for (key, val) in props {
+        print_node_prof(prof + 1);
+        print!("\"{}\": ", key);
+        print_json_value(val, prof + 1);
+        println!(",");
+    }
+
+    print_node_prof(prof);
+    print!("}}");
+}
+
 fn print_json_value(val: &JsonValue, prof: u32) {
     match val {
         JsonValue::Nbr(n) => {
@@ -66,7 +87,7 @@ fn print_json_value(val: &JsonValue, prof: u32) {
             print!("{}", b);
         }
         JsonValue::Array(content) => print_json_array(content, prof),
-        _ => print!("nope"),
+        JsonValue::Object(props) => print_json_object(props, prof),
     }
 }
 
@@ -78,25 +99,54 @@ impl std::fmt::Debug for JsonValue {
 }
 
 fn parse_array(lexed: &mut std::slice::Iter<LexSym>) -> JsonValue {
-    let mut opened_bracket = 1;
     let mut content: Vec<JsonValue> = vec![];
 
+    let mut it2 = lexed.clone();
+
+    if let Some(LexSym::TsRBracket) = it2.next() {
+        return JsonValue::Array(content);
+    }
+
     loop {
-        match lexed.next().unwrap() {
-            LexSym::TsRBracket => {
-                if opened_bracket == 1 {
-                    break;
-                } else {
-                    opened_bracket -= 1;
-                }
-            }
-            LexSym::TsLBracket => opened_bracket += 1,
-            LexSym::TsComma => (),
-            _ => content.push(parse_value(lexed)),
+        content.push(parse_value(lexed));
+        if let Some(LexSym::TsComma) = lexed.next() {
+        } else {
+            break;
         }
     }
 
     return JsonValue::Array(content);
+}
+
+fn parse_object(lexed: &mut std::slice::Iter<LexSym>) -> JsonValue {
+    let mut props: HashMap<String, JsonValue> = HashMap::new();
+
+    let mut it2 = lexed.clone();
+
+    if let Some(LexSym::TsRCurlyBraces) = it2.next() {
+        return JsonValue::Object(props);
+    }
+
+    loop {
+        let key = if let Some(LexSym::TsString(s)) = lexed.next() {
+            s
+        } else {
+            unimplemented!();
+        };
+
+        lexed.next();
+
+        let val = parse_value(lexed);
+
+        props.insert(key.to_string(), val);
+
+        if let Some(LexSym::TsComma) = lexed.next() {
+        } else {
+            break;
+        }
+    }
+
+    return JsonValue::Object(props);
 }
 
 fn parse_value(lexed: &mut std::slice::Iter<LexSym>) -> JsonValue {
@@ -105,6 +155,7 @@ fn parse_value(lexed: &mut std::slice::Iter<LexSym>) -> JsonValue {
         LexSym::TsString(s) => JsonValue::Str(s.to_string()),
         LexSym::TsBool(b) => JsonValue::Bool(*b),
         LexSym::TsLBracket => parse_array(lexed),
+        LexSym::TsLCurlyBraces => parse_object(lexed),
         _ => unimplemented!(),
     };
 }
