@@ -135,7 +135,15 @@ fn get_symbol_nbr(s: &str) -> Result<(LexSym, GramSym, usize), String> {
     return Ok((LexSym::TsNbr(nb), GramSym::TsNbr, size));
 }
 
-// fn get_bool() -> Option<> {}
+fn get_bool(s: &str) -> Option<(LexSym, GramSym, usize)> {
+    return if s.len() >= 4 && &s[..4] == "true" {
+        Some((LexSym::TsBool(true), GramSym::TsBool, 4))
+    } else if s.len() >= 5 && &s[..5] == "false" {
+        Some((LexSym::TsBool(false), GramSym::TsBool, 5))
+    } else {
+        None
+    };
+}
 
 fn get_sym(s: &str) -> Result<(LexSym, GramSym, usize), String> {
     if s.len() == 0 {
@@ -149,7 +157,9 @@ fn get_sym(s: &str) -> Result<(LexSym, GramSym, usize), String> {
         it.nth(nb_spaces - 1);
     }
 
-    // if let Some()
+    if let Some((lex_sym, gram_sym, size)) = get_bool(&s[nb_spaces..]) {
+        return Ok((lex_sym, gram_sym, size + nb_spaces));
+    }
 
     let (lex_sym, gram_sym, size) = match it.next().unwrap() {
         '[' => (LexSym::TsLBracket, GramSym::TsLBracket, 1),
@@ -162,8 +172,6 @@ fn get_sym(s: &str) -> Result<(LexSym, GramSym, usize), String> {
         '0'...'9' | '-' => get_symbol_nbr(&s[nb_spaces..])?,
         _ => (LexSym::TsInvalid, GramSym::TsInvalid, 1),
     };
-
-    println!("lex_sym: {:?}", lex_sym);
 
     return Ok((lex_sym, gram_sym, size + nb_spaces));
 }
