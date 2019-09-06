@@ -62,7 +62,7 @@ fn print_json_value(val: &JsonValue, prof: u32) {
         }
         JsonValue::Str(s) => {
             print_node_prof(prof);
-            print!("{}", s);
+            print!("\"{}\"", s);
         }
         JsonValue::Bool(b) => {
             print_node_prof(prof);
